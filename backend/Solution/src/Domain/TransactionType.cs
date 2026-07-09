@@ -1,8 +1,8 @@
-namespace backend.Models
+namespace Domain
 {
     public enum TransactionType
     {
         Expense = 0,
-        Revenue = 1
+        Income = 1
     }
 }

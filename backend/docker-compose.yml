@@ -2,7 +2,7 @@ services:
   mysql:
     image: mysql:8.0
     container_name: controle-gastos-mysql
-    restart: unless-stopped
+    restart: always
     environment:
       MYSQL_ROOT_PASSWORD: 123456
       MYSQL_DATABASE: controle_gastos
