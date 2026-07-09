@@ -5,16 +5,60 @@ using Domain.Interfaces;
 using Infrastructure;
 using Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
+
+var envFilePath = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+if (File.Exists(envFilePath))
+{
+    foreach (var line in File.ReadAllLines(envFilePath))
+    {
+        var trimmedLine = line.Trim();
+        if (string.IsNullOrWhiteSpace(trimmedLine) || trimmedLine.StartsWith("#"))
+            continue;
+
+        var separatorIndex = trimmedLine.IndexOf('=');
+        if (separatorIndex <= 0)
+            continue;
+
+        var key = trimmedLine[..separatorIndex].Trim();
+        var value = trimmedLine[(separatorIndex + 1)..].Trim().Trim('"');
+        Environment.SetEnvironmentVariable(key, value);
+    }
+}
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration
+    .AddJsonFile("appsettings.json", optional: false)
+    .AddJsonFile("appsettings.Development.json", optional: true)
+    .AddEnvironmentVariables();
 
+string connectionString = builder.Configuration.GetConnectionString("AppDbConnectionString")
+    ?? Environment.GetEnvironmentVariable("ConnectionStrings__AppDbConnectionString")
+    ?? Environment.GetEnvironmentVariable("AppDbConnectionString")
+    ?? "Host=localhost;Port=5432;Database=controle_gastos;Username=postgres;Password=postgres";
+
+if (connectionString.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) ||
+    connectionString.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+{
+    if (Uri.TryCreate(connectionString, UriKind.Absolute, out var uri))
+    {
+        var pgBuilder = new NpgsqlConnectionStringBuilder
+        {
+            Host = uri.Host,
+            Port = uri.IsDefaultPort ? 5432 : uri.Port,
+            Database = uri.AbsolutePath.Trim('/'),
+            Username = Uri.UnescapeDataString(uri.UserInfo.Split(':')[0]),
+            Password = uri.UserInfo.Contains(':') ? Uri.UnescapeDataString(uri.UserInfo.Split(':')[1]) : string.Empty,
+            SslMode = SslMode.Require
+        };
+
+        connectionString = pgBuilder.ConnectionString;
+    }
+}
 
 builder.Services.AddControllers();
-// O banco usado é MySQL; a connection string vem do appsettings.
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseMySql(
-        builder.Configuration.GetConnectionString("AppDbConnectionString"),
-        new MySqlServerVersion(new Version(8, 0, 36))));
+// O banco usado é PostgreSQL
+builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 
 // Registro das camadas da aplicação.
 builder.Services.AddScoped<ITransactionService, TransactionService>();

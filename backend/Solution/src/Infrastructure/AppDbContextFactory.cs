@@ -15,10 +15,10 @@ namespace Infrastructure
                 .Build();
 
             var connectionString = configuration.GetConnectionString("AppDbConnectionString")
-                ?? "Server=localhost;Port=3306;Database=controle_gastos;User=root;Password=123456;TreatTinyAsBoolean=true;AllowPublicKeyRetrieval=True;SslMode=None";
+                ?? "Host=localhost;Port=5432;Database=controle_gastos;Username=postgres;Password=postgres";
 
             var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
-            optionsBuilder.UseMySql(connectionString, new MySqlServerVersion(new Version(8, 0, 36)));
+            optionsBuilder.UseNpgsql(connectionString);
 
             return new AppDbContext(optionsBuilder.Options);
         }
