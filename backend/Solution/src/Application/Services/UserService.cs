@@ -23,6 +23,7 @@ namespace Application.Services
 
         public async Task CreateUserAsync(CreateUserDto userDto)
         {
+                // A entidade é montada a partir do DTO para deixar a camada de serviço simples.
             var user = new User
             {
                 Name = userDto.Name,
@@ -36,7 +37,7 @@ namespace Application.Services
         {
             var existing = await _repository.GetByIdAsync(id);
         
-            // O AutoMapper aplica o DTO sobre a entidade existente
+            // Atualiza só o que veio no DTO, sem recriar o registro.
             _mapper.Map(userUpdated, existing);
             
             await _repository.UpdateAsync();
@@ -71,9 +72,9 @@ namespace Application.Services
             var users = await _repository.GetAllAsync();
             var transactions = await _transactionRepository.GetAllAsync();
 
+            // O resumo é calculado por pessoa para a tela mostrar o total individual e o geral.
             var userTotals = users.Select(user =>
             {
-                // O cálculo é feito por pessoa para refletir exatamente o resumo solicitado na especificação.
                 var userTransactions = transactions.Where(transaction => transaction.UserId == user.Id);
                 var totalIncome = userTransactions.Where(transaction => transaction.Type == TransactionType.Income).Sum(transaction => transaction.Value);
                 var totalExpense = userTransactions.Where(transaction => transaction.Type == TransactionType.Expense).Sum(transaction => transaction.Value);

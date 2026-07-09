@@ -21,6 +21,7 @@ public class TransactionService : ITransactionService
 
     public async Task CreateTransactionAsync(CreateTransactionDto transactionDto)
     {
+        // Antes de salvar, confirmamos se a pessoa existe e se a regra de idade permite a operação.
         var userExists = await _userRepository.GetByIdAsync(transactionDto.UserId);
         
         if (userExists == null)
@@ -54,10 +55,10 @@ public class TransactionService : ITransactionService
 
         int userId = transactionUpdated.UserId ?? existing.UserId;
 
-        // Determina o Type final (se o DTO enviou um, usa ele; se não, mantém o atual)
+        // Se o DTO não mandar um campo, mantemos o valor atual da transação.
         TransactionType finalType = transactionUpdated.Type ?? existing.Type;
 
-        // Valida a regra de idade com o estado final
+        // A validação usa o estado final para evitar atualizar algo inválido.
         var user = await _userRepository.GetByIdAsync(userId);
         if (user == null) throw new Exception("Usuário não encontrado.");
 
@@ -66,7 +67,7 @@ public class TransactionService : ITransactionService
             throw new Exception("Operação inválida: Usuário menor de 18 anos não pode ter receita.");
         }
         
-        // O AutoMapper aplica o DTO sobre a entidade existente
+        // O AutoMapper aplica os dados do DTO sobre o registro já encontrado.
         _mapper.Map(transactionUpdated, existing);
         
         await _repository.UpdateAsync();

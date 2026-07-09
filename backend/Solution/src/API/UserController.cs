@@ -7,6 +7,7 @@ using Application.DTOs.UserDTOs;
 
 namespace API
 {
+    // Controlador das pessoas e dos totais consolidados.
     [ApiController]
     [Route("api/[controller]")]
     public class UserController : ControllerBase
@@ -21,6 +22,7 @@ namespace API
         [HttpPost]
         public async Task<IActionResult> CreateUser(CreateUserDto user)
         {
+            // Validação básica do DTO antes de chamar a regra de negócio.
             if(!ModelState.IsValid)
             {
                 return BadRequest(ModelState);

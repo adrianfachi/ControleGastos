@@ -5,6 +5,7 @@ using Application.DTOs.TransactionsDTOs;
 
 namespace API
 {
+    // Controlador das transações exposto pela API REST.
     [ApiController]
     [Route("api/[controller]")]
     public class TransactionController: ControllerBase
@@ -18,6 +19,7 @@ namespace API
         [HttpPost]
         public async Task<IActionResult> CreateTransaction(CreateTransactionDto transaction)
         {
+            // O ModelState garante que o DTO chegou com os campos obrigatórios preenchidos.
             if(!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
