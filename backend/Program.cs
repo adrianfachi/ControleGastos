@@ -69,6 +69,14 @@ builder.Services.AddAutoMapper(typeof(MappingProfile));
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowVercel",
+        policy => policy.WithOrigins("https://controle-gastos-azure.vercel.app")
+                        .AllowAnyMethod()
+                        .AllowAnyHeader());
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
