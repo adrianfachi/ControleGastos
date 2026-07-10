@@ -7,38 +7,17 @@ using Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
-var envFilePath = Path.Combine(Directory.GetCurrentDirectory(), ".env");
-if (File.Exists(envFilePath))
-{
-    foreach (var line in File.ReadAllLines(envFilePath))
-    {
-        var trimmedLine = line.Trim();
-        if (string.IsNullOrWhiteSpace(trimmedLine) || trimmedLine.StartsWith("#"))
-            continue;
-
-        var separatorIndex = trimmedLine.IndexOf('=');
-        if (separatorIndex <= 0)
-            continue;
-
-        var key = trimmedLine[..separatorIndex].Trim();
-        var value = trimmedLine[(separatorIndex + 1)..].Trim().Trim('"');
-        Environment.SetEnvironmentVariable(key, value);
-    }
-}
-
 var builder = WebApplication.CreateBuilder(args);
-builder.Configuration
-    .AddJsonFile("appsettings.json", optional: false)
-    .AddJsonFile("appsettings.Development.json", optional: true)
-    .AddEnvironmentVariables();
+
+// --- Configuração de Ambiente e Conexão ---
+builder.Configuration.AddJsonFile("appsettings.json", optional: false)
+                     .AddEnvironmentVariables();
 
 string connectionString = builder.Configuration.GetConnectionString("AppDbConnectionString")
-    ?? Environment.GetEnvironmentVariable("ConnectionStrings__AppDbConnectionString")
     ?? Environment.GetEnvironmentVariable("AppDbConnectionString")
     ?? "Host=localhost;Port=5432;Database=controle_gastos;Username=postgres;Password=postgres";
 
-if (connectionString.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) ||
-    connectionString.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+if (connectionString.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase))
 {
     if (Uri.TryCreate(connectionString, UriKind.Absolute, out var uri))
     {
@@ -51,56 +30,49 @@ if (connectionString.StartsWith("postgres://", StringComparison.OrdinalIgnoreCas
             Password = uri.UserInfo.Contains(':') ? Uri.UnescapeDataString(uri.UserInfo.Split(':')[1]) : string.Empty,
             SslMode = SslMode.Require
         };
-
         connectionString = pgBuilder.ConnectionString;
     }
 }
 
+// --- Serviços ---
 builder.Services.AddControllers();
-// O banco usado é PostgreSQL
 builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 
-// Registro das camadas da aplicação.
 builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddAutoMapper(typeof(MappingProfile));
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
+// Configuração do CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowVercel",
-        policy => policy.WithOrigins("https://controle-gastos-azure.vercel.app")
-                        .AllowAnyMethod()
-                        .AllowAnyHeader());
+    options.AddPolicy("AllowVercel", policy =>
+        policy.WithOrigins("https://controle-gastos-azure.vercel.app")
+              .AllowAnyMethod()
+              .AllowAnyHeader());
 });
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
+// --- Pipeline HTTP (A ORDEM IMPORTA!) ---
 
-    app.UseSwaggerUI(options =>
-    {
-        options.SwaggerEndpoint("/openapi/v1.json", "Minha API v1");
-    });
-}
-
+// 1. Migrações automáticas
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    // Isso aplica as migrações pendentes automaticamente
     dbContext.Database.Migrate(); 
 }
 
+// 2. Middlewares de Segurança e Roteamento
 app.UseHttpsRedirection();
+app.UseRouting(); 
+
+// O CORS deve ser aplicado aqui, antes da Autenticação/Autorização
+app.UseCors("AllowVercel");
 
 app.UseAuthorization();
-
 app.MapControllers();
 
 app.Run();
