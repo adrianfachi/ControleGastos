@@ -40,6 +40,9 @@ public class TransactionService : ITransactionService
             UserId = transactionDto.UserId
         };
 
+        // O PostgreSQL exige um DateTime UTC para o tipo timestamp with time zone.
+        transaction.NormalizeDateToUtc();
+
         await _repository.CreateAsync(transaction);
     }
 
@@ -69,6 +72,13 @@ public class TransactionService : ITransactionService
         
         // O AutoMapper aplica os dados do DTO sobre o registro já encontrado.
         _mapper.Map(transactionUpdated, existing);
+
+        if (transactionUpdated.Date.HasValue)
+        {
+            existing.Date = transactionUpdated.Date.Value;
+        }
+
+        existing.NormalizeDateToUtc();
         
         await _repository.UpdateAsync();
         return existing;
