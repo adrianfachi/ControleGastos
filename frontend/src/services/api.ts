@@ -11,7 +11,7 @@ import type { TotalsResponse } from '../types/totals'
  * durante o desenvolvimento. Isso mantém a UI simples e evita problemas de CORS.
  */
 const api = axios.create({
-	baseURL: '/api',
+	baseURL: 'https://controlegastos-o295.onrender.com/api',
 	headers: {
 		'Content-Type': 'application/json',
 	},
